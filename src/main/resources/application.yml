@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8083}
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: ms-pets
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/vitalpet_pets?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+  jpa:
+    hibernate:
+      # "update" crea/ajusta las tablas pero NO borra los datos al reiniciar (el original usaba "create").
+      ddl-auto: ${DDL_AUTO:update}
+    show-sql: ${SHOW_SQL:false}
+    defer-datasource-initialization: true # Hibernate crea las tablas y luego corre data.sql
+  sql:
+    init:
+      mode: always # data.sql usa INSERT IGNORE, es seguro re-ejecutarlo en cada arranque
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 3000
+            read-timeout: 5000
+
+# ─── Integración con ms-users (lo entrega otro compañero) ──────────────
+users:
+  service:
+    # URL base donde corre ms-users (IP/puerto de su EC2, o localhost:8082 en local)
+    url: ${USERS_SERVICE_URL:http://localhost:8082}
+  validation:
+    # false = el ownerId se acepta sin consultar a ms-users (modo standalone)
+    # true  = se valida que el usuario exista y sea cliente (requiere ms-users arriba)
+    enabled: ${USERS_VALIDATION_ENABLED:false}
+
+# ─── CORS (el frontend llama directo a este servicio) ──────────────────
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:*}
+
+# ─── Swagger ───────────────────────────────────────────────────────────
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /api/pets/v3/api-docs

@@ -1,0 +1,47 @@
+# VitalPet Connect - ms-pets (standalone)
+# Levanta MySQL propia + el microservicio. Pensado para una sola instancia EC2.
+#   cp .env.example .env   (y editar las claves)
+#   docker compose up -d --build
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: pets-db
+    command:
+      - --innodb-buffer-pool-size=128M
+      - --max_connections=50
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Define DB_ROOT_PASSWORD en el archivo .env}
+      MYSQL_DATABASE: vitalpet_pets
+      MYSQL_USER: ${DB_USER:-vitalpet}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en el archivo .env}
+    volumes:
+      - pets-db-data:/var/lib/mysql
+    # Sin "ports": la base de datos NO se publica fuera de la red de Docker.
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  ms-pets:
+    build: .
+    container_name: ms-pets
+    ports:
+      - "8083:8083"
+    environment:
+      DB_URL: jdbc:mysql://db:3306/vitalpet_pets?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      DB_USER: ${DB_USER:-vitalpet}
+      DB_PASSWORD: ${DB_PASSWORD}
+      USERS_VALIDATION_ENABLED: ${USERS_VALIDATION_ENABLED:-false}
+      USERS_SERVICE_URL: ${USERS_SERVICE_URL:-http://localhost:8082}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-*}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pets-db-data:
