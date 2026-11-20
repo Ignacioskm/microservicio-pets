@@ -49,3 +49,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /api/pets/v3/api-docs
+
+internal:
+  api:
+    key: ${INTERNAL_API_KEY}
